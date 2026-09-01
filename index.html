@@ -40,7 +40,13 @@
         <span class="text-2xl">🥬</span>
         <span class="font-title text-xl text-emerald-700 tracking-wide">우리집 냉장고</span>
       </div>
-      <span class="text-[11px] text-emerald-500 font-semibold" id="header-date"></span>
+      <div class="flex items-center gap-2.5">
+        <span class="text-[11px] text-emerald-500 font-semibold" id="header-date"></span>
+        <button onclick="toggleSettingsModal()" class="relative text-lg leading-none" title="가족 공유 설정">
+          ⚙️
+          <span id="sync-dot" class="hidden absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-white"></span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -201,6 +207,38 @@
     <span id="toast-msg"></span>
   </div>
 
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center" onclick="if(event.target===this) toggleSettingsModal()">
+    <div class="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl p-5 max-h-[88vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between mb-1">
+        <h2 class="font-title text-lg text-emerald-700">👨‍👩‍👧‍👦 가족 공유 설정</h2>
+        <button onclick="toggleSettingsModal()" class="text-gray-400 text-xl leading-none px-1">✕</button>
+      </div>
+      <p id="sync-status-line" class="text-xs font-semibold mb-3 text-gray-400">⚪ 아직 연결되지 않았어요. 이 기기에만 저장돼요.</p>
+
+      <div class="bg-emerald-50/60 border border-emerald-100 rounded-2xl p-3 text-[11px] text-gray-600 space-y-1.5 mb-4 leading-relaxed">
+        <p class="font-bold text-emerald-700">처음 한 번만 설정하면 가족 모두 실시간으로 공유돼요</p>
+        <p>1. firebase.google.com 에서 무료 프로젝트를 만드세요.</p>
+        <p>2. 왼쪽 메뉴 Firestore Database → 데이터베이스 만들기 (테스트 모드로 시작해도 OK).</p>
+        <p>3. Authentication → Sign-in method → 익명(Anonymous) 로그인을 사용 설정하세요.</p>
+        <p>4. 프로젝트 설정(⚙) → 내 앱 → 웹 앱 추가 → 표시되는 firebaseConfig 값 전체를 복사하세요.</p>
+        <p>5. 아래에 붙여넣고, 가족 코드(아무 문자열)를 정해서 연결하면 끝!</p>
+        <p>6. 다른 가족 구성원도 이 화면에 똑같은 firebaseConfig와 가족 코드를 입력하면 실시간으로 함께 보게 돼요.</p>
+      </div>
+
+      <label class="block text-xs font-bold text-gray-500 mb-1">firebaseConfig 붙여넣기</label>
+      <textarea id="firebase-config-input" rows="5" placeholder='{ "apiKey": "...", "authDomain": "...", "projectId": "...", ... }' class="w-full text-[11px] font-mono p-2.5 border border-emerald-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-emerald-300 mb-2"></textarea>
+
+      <label class="block text-xs font-bold text-gray-500 mb-1">가족 코드</label>
+      <input type="text" id="family-group-id" placeholder="예: kimfamily2024" class="w-full text-sm px-3 py-2 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-300 mb-3">
+
+      <div class="flex gap-2">
+        <button onclick="disconnectFamilySync()" id="btn-disconnect-sync" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-500 font-bold py-2.5 rounded-xl transition text-sm">연결 해제</button>
+        <button onclick="connectFamilySync()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition active:scale-95 text-sm">연결하기</button>
+      </div>
+      <p class="text-[10px] text-gray-400 mt-3 leading-relaxed">⚠️ 이 앱 주소와 가족 코드를 아는 사람은 누구나 데이터에 접근할 수 있어요. 배포 주소는 가족 외에는 알리지 않는 걸 추천해요.</p>
+    </div>
+  </div>
+
   <script>
     /* ===================== State & persistence ===================== */
     let fridgeItems = [];      // {id, name, category, location, expiry, addedAt, checked}
@@ -209,6 +247,12 @@
     let storageLocations = []; // {id, name} — customizable per household (냉장실/냉동실/김치냉장고/실온...)
     let pendingItems = [];     // items awaiting confirmation before entering the fridge (from OCR or shopping list)
     let activeLocationFilter = null; // null = show all locations
+
+    // Family real-time sync (optional, via Firebase Firestore — configured per-device in the settings modal)
+    let familySyncConfig = null; // {firebaseConfig, groupId}
+    let fsDb = null;
+    let fsUnsub = null;
+    let pushTimer = null;
 
     const CATEGORY_LIST = [
       { name: '과일', emoji: '🍎' }, { name: '채소', emoji: '🥦' }, { name: '고기', emoji: '🥩' },
@@ -269,15 +313,151 @@
       });
       if (migrated) saveFridge();
     }
-    function saveFridge() { localStorage.setItem('fridge_items_v1', JSON.stringify(fridgeItems)); }
-    function saveLogs() { localStorage.setItem('cook_logs_v1', JSON.stringify(cookLogs)); }
-    function saveShopping() { localStorage.setItem('shopping_list_v1', JSON.stringify(shoppingList)); }
-    function saveLocations() { localStorage.setItem('storage_locations_v1', JSON.stringify(storageLocations)); }
+    function saveFridge() { localStorage.setItem('fridge_items_v1', JSON.stringify(fridgeItems)); schedulePush(); }
+    function saveLogs() { localStorage.setItem('cook_logs_v1', JSON.stringify(cookLogs)); schedulePush(); }
+    function saveShopping() { localStorage.setItem('shopping_list_v1', JSON.stringify(shoppingList)); schedulePush(); }
+    function saveLocations() { localStorage.setItem('storage_locations_v1', JSON.stringify(storageLocations)); schedulePush(); }
 
     function uid() { return Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
 
     function pad(n) { return String(n).padStart(2, '0'); }
     function toISODate(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+
+    /* ===================== Family real-time sync (Firebase Firestore) ===================== */
+    function loadSyncConfig() {
+      const raw = localStorage.getItem('family_sync_config_v1');
+      familySyncConfig = raw ? JSON.parse(raw) : null;
+    }
+
+    function loadScriptOnce(src) {
+      return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('스크립트 로드 실패: ' + src));
+        document.head.appendChild(s);
+      });
+    }
+
+    async function loadFirebaseSDK() {
+      if (window.firebase && window.firebase.firestore) return;
+      const base = 'https://www.gstatic.com/firebasejs/10.14.1/';
+      await loadScriptOnce(base + 'firebase-app-compat.js');
+      await loadScriptOnce(base + 'firebase-auth-compat.js');
+      await loadScriptOnce(base + 'firebase-firestore-compat.js');
+    }
+
+    async function initFamilySync() {
+      if (!familySyncConfig) return;
+      try {
+        await loadFirebaseSDK();
+        if (!firebase.apps.length) firebase.initializeApp(familySyncConfig.firebaseConfig);
+        await firebase.auth().signInAnonymously();
+        fsDb = firebase.firestore();
+        if (fsUnsub) fsUnsub();
+        const docRef = fsDb.collection('families').doc(familySyncConfig.groupId);
+        fsUnsub = docRef.onSnapshot(snap => {
+          const data = snap.data();
+          if (data && data.payload) applyRemoteState(JSON.parse(data.payload));
+        }, err => {
+          console.error(err);
+          showToast('가족 동기화 연결에 문제가 생겼어요.');
+        });
+        updateSyncStatusUI(true);
+        showToast('가족과 실시간으로 연결됐어요! 👨‍👩‍👧‍👦');
+      } catch (err) {
+        console.error(err);
+        fsDb = null;
+        showToast('가족 공유 연결에 실패했어요. firebaseConfig를 확인해주세요.');
+        updateSyncStatusUI(false);
+      }
+    }
+
+    function applyRemoteState(state) {
+      fridgeItems = state.fridgeItems || fridgeItems;
+      cookLogs = state.cookLogs || cookLogs;
+      shoppingList = state.shoppingList || shoppingList;
+      if (state.storageLocations && state.storageLocations.length) storageLocations = state.storageLocations;
+      // write straight to localStorage (not via save*()) so we don't immediately re-push what we just received
+      localStorage.setItem('fridge_items_v1', JSON.stringify(fridgeItems));
+      localStorage.setItem('cook_logs_v1', JSON.stringify(cookLogs));
+      localStorage.setItem('shopping_list_v1', JSON.stringify(shoppingList));
+      localStorage.setItem('storage_locations_v1', JSON.stringify(storageLocations));
+      renderManualLocationOptions();
+      refreshCurrentView();
+    }
+
+    function refreshCurrentView() {
+      if (!document.getElementById('view-fridge').classList.contains('hidden')) { renderLocationTabs(); renderFridgeList(); }
+      if (!document.getElementById('view-shopping').classList.contains('hidden')) renderShoppingList();
+      if (!document.getElementById('view-log').classList.contains('hidden')) { renderCalendar(); renderDayDetail(); }
+      if (!document.getElementById('view-menu').classList.contains('hidden')) renderMenuBoard();
+    }
+
+    function schedulePush() {
+      if (!familySyncConfig) return;
+      clearTimeout(pushTimer);
+      pushTimer = setTimeout(pushStateToCloud, 400);
+    }
+
+    function pushStateToCloud() {
+      if (!fsDb || !familySyncConfig) return;
+      const payload = JSON.stringify({ fridgeItems, cookLogs, shoppingList, storageLocations });
+      fsDb.collection('families').doc(familySyncConfig.groupId)
+        .set({ payload, updatedAt: Date.now() }, { merge: true })
+        .catch(err => console.error(err));
+    }
+
+    function toggleSettingsModal() {
+      const modal = document.getElementById('settings-modal');
+      modal.classList.toggle('hidden');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('firebase-config-input').value = familySyncConfig ? JSON.stringify(familySyncConfig.firebaseConfig, null, 2) : '';
+        document.getElementById('family-group-id').value = familySyncConfig ? familySyncConfig.groupId : '';
+        updateSyncStatusUI(!!fsDb);
+      }
+    }
+
+    function updateSyncStatusUI(connected) {
+      const el = document.getElementById('sync-status-line');
+      const dot = document.getElementById('sync-dot');
+      if (connected) {
+        el.textContent = `🟢 연결됨 (가족 코드: ${familySyncConfig.groupId})`;
+        el.className = 'text-xs font-semibold mb-3 text-emerald-600';
+        dot.classList.remove('hidden');
+      } else if (familySyncConfig) {
+        el.textContent = '🟡 설정은 저장돼 있지만 아직 연결되지 않았어요.';
+        el.className = 'text-xs font-semibold mb-3 text-amber-600';
+        dot.classList.add('hidden');
+      } else {
+        el.textContent = '⚪ 아직 연결되지 않았어요. 이 기기에만 저장돼요.';
+        el.className = 'text-xs font-semibold mb-3 text-gray-400';
+        dot.classList.add('hidden');
+      }
+    }
+
+    async function connectFamilySync() {
+      const raw = document.getElementById('firebase-config-input').value.trim();
+      const groupId = document.getElementById('family-group-id').value.trim();
+      if (!raw || !groupId) { showToast('firebaseConfig와 가족 코드를 모두 입력해주세요.'); return; }
+      let parsedConfig;
+      try { parsedConfig = JSON.parse(raw); }
+      catch (e) { showToast('firebaseConfig 형식이 올바르지 않아요. 다시 확인해주세요.'); return; }
+      familySyncConfig = { firebaseConfig: parsedConfig, groupId };
+      localStorage.setItem('family_sync_config_v1', JSON.stringify(familySyncConfig));
+      showToast('연결하는 중이에요...');
+      await initFamilySync();
+    }
+
+    function disconnectFamilySync() {
+      if (fsUnsub) { fsUnsub(); fsUnsub = null; }
+      fsDb = null;
+      familySyncConfig = null;
+      localStorage.removeItem('family_sync_config_v1');
+      updateSyncStatusUI(false);
+      showToast('가족 공유 연결을 해제했어요. 이 기기에만 저장돼요.');
+    }
 
     /* ===================== Storage locations (custom tabs) ===================== */
     function renderLocationTabs() {
@@ -991,11 +1171,13 @@
     /* ===================== Init ===================== */
     window.addEventListener('DOMContentLoaded', () => {
       loadState();
+      loadSyncConfig();
       document.getElementById('header-date').innerText = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
       document.getElementById('manual-category').innerHTML = categoryOptionsHtml('기타');
       renderManualLocationOptions();
       switchTab('fridge');
       renderStarInput();
+      if (familySyncConfig) initFamilySync();
     });
   </script>
 </body>
