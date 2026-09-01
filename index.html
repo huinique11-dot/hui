@@ -2,655 +2,714 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🧸 소개팅 남 판독기 (Blind Date Inspector)</title>
-  <!-- Tailwind CSS -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>🥬 우리집 냉장고</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Gowun Dodum & Gaegu for cute vibe -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Gowun+Dodum&display=swap" rel="stylesheet">
-  <!-- Canvas Confetti Library for high scores -->
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
+  <!-- Tesseract.js: client-side OCR for receipt scanning -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
   <style>
     body {
       font-family: 'Gowun Dodum', sans-serif;
-      background-color: #fff5f7;
-      background-image: radial-gradient(#fbcfe8 1px, transparent 1px);
-      background-size: 20px 20px;
+      background-color: #f4faf6;
+      background-image: radial-gradient(#d9f2e3 1px, transparent 1px);
+      background-size: 18px 18px;
     }
-    .font-cute {
-      font-family: 'Gaegu', cursive;
-    }
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: #fce7f3;
-      border-radius: 10px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #f472b6;
-      border-radius: 10px;
-    }
-    @keyframes float {
-      0%, 100% { transform: translateY(0px) rotate(0deg); }
-      50% { transform: translateY(-6px) rotate(2deg); }
-    }
-    .animate-float {
-      animation: float 3s ease-in-out infinite;
-    }
+    .font-title { font-family: 'Jua', sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #e6f5eb; border-radius: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #6ee7b7; border-radius: 10px; }
+    .star-btn { transition: transform 0.1s; }
+    .star-btn:active { transform: scale(1.2); }
     @keyframes popIn {
-      0% { transform: scale(0.9); opacity: 0; }
+      0% { transform: scale(0.95); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
     }
-    .pop-in {
-      animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    }
+    .pop-in { animation: popIn 0.2s ease-out forwards; }
+    input[type="date"] { -webkit-appearance: none; }
   </style>
 </head>
 <body class="min-h-screen text-gray-800 pb-12">
 
-  <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-pink-200 shadow-sm">
+  <header class="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-emerald-200 shadow-sm">
     <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center space-x-2">
-        <span class="text-2xl animate-float">🧸</span>
-        <span class="font-cute text-2xl font-bold text-pink-600 tracking-wide">소개팅 남 판독기</span>
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">🥬</span>
+        <span class="font-title text-xl text-emerald-700 tracking-wide">우리집 냉장고</span>
       </div>
-      <button onclick="switchTab('history')" class="relative text-xs font-bold text-pink-600 bg-pink-100 hover:bg-pink-200 px-3 py-1.5 rounded-full transition flex items-center gap-1 shadow-sm">
-        📜 기록함
-        <span id="history-badge" class="bg-pink-500 text-white text-[10px] px-1.5 py-0.2 rounded-full hidden">0</span>
-      </button>
+      <span class="text-[11px] text-emerald-500 font-semibold" id="header-date"></span>
     </div>
   </header>
 
   <main class="max-w-md mx-auto px-4 pt-4">
 
-    <div class="flex bg-pink-100/70 p-1 rounded-2xl mb-4 border border-pink-200">
-      <button id="tab-btn-check" onclick="switchTab('check')" class="flex-1 py-2 rounded-xl font-bold text-sm transition-all bg-white text-pink-600 shadow-sm">
-        🔍 판독 체크
-      </button>
-      <button id="tab-btn-history" onclick="switchTab('history')" class="flex-1 py-2 rounded-xl font-bold text-sm transition-all text-pink-400 hover:text-pink-600">
-        💌 저장된 리포트
-      </button>
+    <div class="flex bg-emerald-100/70 p-1 rounded-2xl mb-4 border border-emerald-200 sticky top-[57px] z-20">
+      <button id="tab-btn-fridge" onclick="switchTab('fridge')" class="flex-1 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all">🧊 냉장고</button>
+      <button id="tab-btn-log" onclick="switchTab('log')" class="flex-1 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all">📅 집밥로그</button>
+      <button id="tab-btn-menu" onclick="switchTab('menu')" class="flex-1 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all">📖 메뉴판</button>
     </div>
 
-    <!-- VIEW 1: CHECKLIST FORM -->
-    <div id="view-check" class="space-y-4">
+    <!-- ===================== VIEW: 냉장고 ===================== -->
+    <div id="view-fridge" class="space-y-4">
 
-      <section class="bg-white rounded-3xl p-5 shadow-sm border-2 border-pink-200 pop-in">
+      <section class="bg-white rounded-3xl p-5 shadow-sm border-2 border-emerald-200 pop-in">
+        <h2 class="font-title text-lg text-emerald-700 mb-2 flex items-center gap-1.5"><span>📷</span> 영수증으로 한번에 담기</h2>
+        <p class="text-xs text-gray-500 mb-3">영수증 사진을 찍거나 선택하면 품목을 자동으로 인식해드려요.</p>
+        <label class="block w-full text-center bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-2xl shadow-md cursor-pointer transition active:scale-95">
+          📸 영수증 사진 선택 / 촬영
+          <input type="file" accept="image/*" capture="environment" id="receipt-input" class="hidden" onchange="handleReceiptFile(event)">
+        </label>
+        <div id="ocr-progress" class="hidden mt-3">
+          <div class="w-full bg-emerald-100 h-2.5 rounded-full overflow-hidden">
+            <div id="ocr-progress-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-300" style="width:0%"></div>
+          </div>
+          <p id="ocr-progress-text" class="text-[11px] text-emerald-600 mt-1 font-semibold">인식 준비 중...</p>
+        </div>
+      </section>
+
+      <section id="pending-review" class="hidden bg-white rounded-3xl p-5 shadow-sm border-2 border-amber-300 pop-in">
+        <h2 class="font-title text-lg text-amber-600 mb-1 flex items-center gap-1.5"><span>🔍</span> 인식된 품목 확인</h2>
+        <p class="text-xs text-gray-500 mb-3">이름을 수정하고, 필요없는 항목은 지운 뒤 소비기한을 입력해주세요.</p>
+        <div id="pending-list" class="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-1"></div>
+        <div class="flex gap-2 mt-3">
+          <button onclick="cancelPending()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl transition">취소</button>
+          <button onclick="confirmAddPending()" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl transition active:scale-95">냉장고에 담기</button>
+        </div>
+      </section>
+
+      <section class="bg-white rounded-3xl p-5 shadow-sm border-2 border-emerald-200 pop-in">
+        <h2 class="font-title text-lg text-emerald-700 mb-3 flex items-center gap-1.5"><span>✍️</span> 직접 추가하기</h2>
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <input type="text" id="manual-name" placeholder="품목명 (예: 계란)" class="col-span-2 text-sm px-3 py-2 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-emerald-50/30">
+          <select id="manual-category" class="text-xs px-2 py-2 border border-emerald-200 rounded-xl bg-emerald-50/30 focus:outline-none focus:ring-2 focus:ring-emerald-300">
+            <option value="채소">🥦 채소</option>
+            <option value="과일">🍎 과일</option>
+            <option value="육류">🥩 육류</option>
+            <option value="수산물">🐟 수산물</option>
+            <option value="유제품">🥛 유제품</option>
+            <option value="냉동/가공">🧊 냉동/가공</option>
+            <option value="기타">📦 기타</option>
+          </select>
+          <input type="date" id="manual-expiry" class="text-xs px-2 py-2 border border-emerald-200 rounded-xl bg-emerald-50/30 focus:outline-none focus:ring-2 focus:ring-emerald-300">
+        </div>
+        <button onclick="addManualItem()" class="w-full bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold py-2.5 rounded-xl transition active:scale-95">+ 냉장고에 추가</button>
+      </section>
+
+      <section class="bg-white rounded-3xl p-5 shadow-sm border-2 border-emerald-200 pop-in">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-title text-lg text-emerald-700 flex items-center gap-1.5"><span>🧾</span> 보관 중인 재료 <span id="fridge-count" class="text-xs text-emerald-400">(0)</span></h2>
+        </div>
+        <div class="flex gap-2 mb-3">
+          <button onclick="copySelectedItems()" id="btn-copy-selected" disabled class="flex-1 text-xs font-bold bg-gray-100 text-gray-400 py-2 rounded-xl transition disabled:cursor-not-allowed">📋 선택 재료 복사 (<span id="selected-count">0</span>)</button>
+          <button onclick="searchRecipeForSelected()" id="btn-search-selected" disabled class="flex-1 text-xs font-bold bg-gray-100 text-gray-400 py-2 rounded-xl transition disabled:cursor-not-allowed">🔎 레시피 검색하기</button>
+        </div>
+        <div id="fridge-list" class="space-y-2"></div>
+      </section>
+
+    </div>
+
+    <!-- ===================== VIEW: 집밥로그 ===================== -->
+    <div id="view-log" class="space-y-4 hidden">
+
+      <section class="bg-white rounded-3xl p-5 shadow-sm border-2 border-emerald-200 pop-in">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="font-cute text-xl font-bold text-pink-600 flex items-center gap-1.5">
-            <span>✨</span> 누구와의 소개팅인가요?
-          </h2>
-          <button onclick="resetCurrentForm()" class="text-xs text-gray-400 hover:text-pink-500 underline">
-            초기화
-          </button>
+          <button onclick="changeMonth(-1)" class="text-emerald-500 font-bold px-3 py-1 rounded-lg hover:bg-emerald-50">◀</button>
+          <h2 id="calendar-title" class="font-title text-lg text-emerald-700"></h2>
+          <button onclick="changeMonth(1)" class="text-emerald-500 font-bold px-3 py-1 rounded-lg hover:bg-emerald-50">▶</button>
         </div>
-        
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs text-gray-500 mb-1 font-semibold">상대방 별명 / 이름</label>
-            <input type="text" id="target-name" placeholder="예: 강남역 카페남, L씨" class="w-full text-sm px-3 py-2 border border-pink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-300 bg-pink-50/30">
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1 font-semibold">만난 날짜</label>
-            <input type="date" id="target-date" class="w-full text-sm px-3 py-2 border border-pink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-300 bg-pink-50/30">
-          </div>
+        <div class="grid grid-cols-7 text-center text-[11px] font-bold text-gray-400 mb-1">
+          <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
         </div>
+        <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
       </section>
 
-      <section class="bg-gradient-to-r from-pink-400 via-rose-400 to-purple-400 rounded-3xl p-5 text-white shadow-md relative overflow-hidden pop-in">
-        <div class="absolute -right-4 -bottom-4 opacity-10 text-8xl select-none">💖</div>
-        <div class="relative z-10 flex items-center justify-between">
-          <div>
-            <span class="text-xs font-bold bg-white/20 px-2.5 py-0.5 rounded-full text-pink-100">검증 점수 리포트</span>
-            <div class="mt-1 flex items-baseline gap-1">
-              <span id="score-num" class="text-4xl font-extrabold tracking-tight">0</span>
-              <span class="text-pink-200 font-semibold text-lg">/ <span id="total-num">10</span>점</span>
-            </div>
-            <div id="grade-badge" class="inline-block mt-2 px-3 py-1 bg-white text-pink-600 text-xs font-bold rounded-xl shadow-sm">
-              체크박스를 선택해보세요! 
-            </div>
-          </div>
-          <div class="text-right">
-            <div id="verdict-emoji" class="text-5xl mb-1 animate-bounce">🤔</div>
-            <div id="pass-rate" class="text-xs font-medium text-pink-100">달성률 0%</div>
-          </div>
+      <section class="bg-white rounded-3xl p-5 shadow-sm border-2 border-emerald-200 pop-in">
+        <div class="flex items-center justify-between mb-3">
+          <h2 id="day-detail-title" class="font-title text-lg text-emerald-700">📅 날짜를 선택하세요</h2>
+          <button onclick="toggleAddLogForm()" id="btn-toggle-add-log" class="text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-full transition">+ 기록 추가</button>
         </div>
 
-        <!-- Progress Bar -->
-        <div class="w-full bg-white/30 h-2.5 rounded-full mt-4 overflow-hidden p-0.5">
-          <div id="progress-bar" class="bg-white h-full rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
-        </div>
-      </section>
-
-      <section class="bg-white rounded-3xl p-5 shadow-sm border-2 border-pink-200 space-y-4 pop-in">
-        <div class="flex items-center justify-between border-b border-pink-100 pb-2">
-          <h2 class="font-cute text-xl font-bold text-pink-600 flex items-center gap-1.5">
-            <span>🔍</span> 매너 & 인성 체크리스트
-          </h2>
-          <span class="text-xs text-pink-400 font-medium">솔직하게 체크해주세요</span>
-        </div>
-
-        <div id="checklist-container" class="space-y-3">
-          <!-- Dynamically inserted by JS -->
-        </div>
-
-        <div class="pt-2 border-t border-pink-100">
-          <label class="block text-xs font-semibold text-pink-500 mb-1.5">➕ 나만의 체크 항목 추가하기</label>
+        <div id="add-log-form" class="hidden space-y-2 mb-4 bg-emerald-50/50 p-3 rounded-2xl border border-emerald-100">
+          <input type="text" id="log-name" placeholder="요리명 (예: 김치찌개)" class="w-full text-sm px-3 py-2 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-300">
+          <input type="url" id="log-link" placeholder="레시피 링크 (선택, https://...)" class="w-full text-sm px-3 py-2 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-300">
+          <div class="flex items-center gap-1" id="log-star-input"></div>
           <div class="flex gap-2">
-            <input type="text" id="custom-input" placeholder="예: 첫 만남에 과도한 스킨십을 안 하는가?" class="flex-1 text-xs px-3 py-2 border border-pink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-300">
-            <button onclick="addCustomQuestion()" class="bg-pink-500 hover:bg-pink-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition shadow-sm active:scale-95">
-              추가
-            </button>
+            <input type="text" id="log-tag-input" placeholder="주재료 태그 입력 후 Enter (예: 돼지고기)" onkeydown="if(event.key==='Enter'){event.preventDefault();addLogTag();}" class="flex-1 text-xs px-3 py-2 border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-300">
+            <button onclick="addLogTag()" class="text-xs font-bold bg-emerald-100 text-emerald-700 px-3 rounded-xl">추가</button>
+          </div>
+          <div id="log-tag-chips" class="flex flex-wrap gap-1"></div>
+          <textarea id="log-memo" rows="2" placeholder="메모 (선택)" class="w-full text-xs p-2.5 border border-emerald-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-emerald-300"></textarea>
+          <div class="flex gap-2 pt-1">
+            <button onclick="toggleAddLogForm()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-500 font-bold py-2 rounded-xl text-sm">취소</button>
+            <button onclick="submitCookLog()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 rounded-xl text-sm active:scale-95">저장</button>
           </div>
         </div>
-      </section>
 
-      <section class="bg-white rounded-3xl p-5 shadow-sm border-2 border-pink-200 pop-in">
-        <h2 class="font-cute text-xl font-bold text-pink-600 mb-2 flex items-center gap-1.5">
-          <span>📝</span> 특별히 기억에 남는 점 (메모)
-        </h2>
-        <textarea id="target-notes" rows="3" placeholder="그 사람이 했던 말, 감동 포인트, 혹은 찝찝했던 신호(Red Flag)를 기록해두세요." class="w-full text-xs p-3 border border-pink-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none bg-pink-50/20"></textarea>
-      </section>
-
-      <section class="flex gap-2 pt-2">
-        <button onclick="saveToHistory()" class="flex-1 bg-pink-500 hover:bg-pink-600 text-white font-bold py-3.5 px-4 rounded-2xl shadow-md transition transform active:scale-95 flex items-center justify-center gap-2">
-          <span>💾</span> 판독 결과 저장하기
-        </button>
-        <button onclick="copySummaryToClipboard()" class="bg-pink-100 hover:bg-pink-200 text-pink-600 font-bold py-3.5 px-4 rounded-2xl transition transform active:scale-95 flex items-center justify-center gap-1">
-          <span>📋</span> 세부 요약 복사
-        </button>
+        <div id="day-detail-list" class="space-y-2"></div>
       </section>
 
     </div>
 
-    <!-- VIEW 2: SAVED HISTORY LIST -->
-    <div id="view-history" class="space-y-4 hidden">
-      <div class="bg-white rounded-3xl p-5 shadow-sm border-2 border-pink-200">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="font-cute text-xl font-bold text-pink-600 flex items-center gap-1.5">
-            <span>💌</span> 내가 판독한 소개팅 남 목록
-          </h2>
-          <button onclick="clearAllHistory()" class="text-xs text-red-400 hover:text-red-600 underline">
-            전체 삭제
-          </button>
+    <!-- ===================== VIEW: 메뉴판 ===================== -->
+    <div id="view-menu" class="space-y-4 hidden">
+      <section class="bg-white rounded-3xl p-5 shadow-sm border-2 border-emerald-200 pop-in">
+        <h2 class="font-title text-lg text-emerald-700 mb-3 flex items-center gap-1.5"><span>📖</span> 우리집 메뉴판</h2>
+        <div class="flex bg-emerald-50 p-1 rounded-xl border border-emerald-100 mb-3">
+          <button id="sort-btn-rating" onclick="setMenuSort('rating')" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition">⭐ 별점순</button>
+          <button id="sort-btn-name" onclick="setMenuSort('name')" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition">가 이름순</button>
+          <button id="sort-btn-tag" onclick="setMenuSort('tag')" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition">🏷️ 태그별</button>
         </div>
-        <p class="text-xs text-gray-500 mb-4">비교해보고 가장 괜찮은 남자에게 애프터 신청을 승낙해보세요!</p>
-
-        <div id="history-container" class="space-y-3">
-          <!-- Dynamically generated list -->
-        </div>
-      </div>
+        <div id="menu-tag-filters" class="hidden flex flex-wrap gap-1.5 mb-3"></div>
+        <div id="menu-list" class="space-y-3"></div>
+      </section>
     </div>
 
   </main>
 
-  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900/85 text-white text-xs px-4 py-2.5 rounded-full shadow-lg transition-all duration-300 opacity-0 pointer-events-none z-50 flex items-center gap-2">
-    <span id="toast-msg">메시지 내용</span>
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900/90 text-white text-xs px-4 py-2.5 rounded-full shadow-lg transition-all duration-300 opacity-0 pointer-events-none z-50 max-w-[90vw] text-center">
+    <span id="toast-msg"></span>
   </div>
 
   <script>
-    /* Default core criteria questions carefully crafted for checking date quality */
-    const defaultQuestions = [
-      { id: 1, text: "식당, 카페 직원분들에게 반말 안 하고 친절히 대한다 ☕", category: "기본매너" },
-      { id: 2, text: "내 말을 건성으로 듣지 않고 귀기울여 들으며 질문한다 👂", category: "대화" },
-      { id: 3, text: "약속 시간을 지키거나, 늦더라도 미리 예의있게 상황을 알렸다 ⏰", category: "기본매너" },
-      { id: 4, text: "메뉴나 장소 결정 시 내 취향과 편의를 먼저 물어보고 배려한다 🍰", category: "배려심" },
-      { id: 5, text: "전 연인에 대한 불필요한 비하나 자랑을 하지 않는다 🙅‍♀️", category: "인성" },
-      { id: 6, text: "재력, 차, 인맥 등 과도한 허세나 자뻑이 없다 🚘", category: "겸손함" },
-      { id: 7, text: "음식이 늦거나 상황이 꼬여도 쉽게 짜증내지 않고 유연하다 🌿", category: "감정조절" },
-      { id: 8, text: "대화 티키타카가 잘 되고 나를 웃게 만들어준다 🎉", category: "유머/호감" },
-      { id: 9, text: "과도한 유흥, 도박, 과음 등 레드플래그 취미 신호가 없다 ⚽", category: "생활패턴" },
-      { id: 10, text: "헤어진 후 매너 있게 잘 들어갔는지 안부 인사 및 애프터를 표한다 💌", category: "애프터" }
-    ];
+    /* ===================== State & persistence ===================== */
+    let fridgeItems = [];   // {id, name, category, expiry, addedAt, checked}
+    let cookLogs = [];      // {id, date, name, link, rating, tags:[], memo}
+    let pendingItems = [];  // items parsed from receipt awaiting confirmation
 
-    let currentQuestions = [...defaultQuestions];
-    let checkedState = {};
+    function loadState() {
+      fridgeItems = JSON.parse(localStorage.getItem('fridge_items_v1') || '[]');
+      cookLogs = JSON.parse(localStorage.getItem('cook_logs_v1') || '[]');
+    }
+    function saveFridge() { localStorage.setItem('fridge_items_v1', JSON.stringify(fridgeItems)); }
+    function saveLogs() { localStorage.setItem('cook_logs_v1', JSON.stringify(cookLogs)); }
 
-    window.addEventListener('DOMContentLoaded', () => {
-      // Set default date to today
-      const dateInput = document.getElementById('target-date');
-      if (dateInput) {
-        const today = new Date().toISOString().split('T')[0];
-        dateInput.value = today;
-      }
+    function uid() { return Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
 
-      renderChecklist();
-      updateHistoryBadge();
-    });
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function toISODate(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 
-    function switchTab(tabName) {
-      const viewCheck = document.getElementById('view-check');
-      const viewHistory = document.getElementById('view-history');
-      const tabBtnCheck = document.getElementById('tab-btn-check');
-      const tabBtnHistory = document.getElementById('tab-btn-history');
-
-      if (tabName === 'check') {
-        viewCheck.classList.remove('hidden');
-        viewHistory.classList.add('hidden');
-        tabBtnCheck.className = "flex-1 py-2 rounded-xl font-bold text-sm transition-all bg-white text-pink-600 shadow-sm";
-        tabBtnHistory.className = "flex-1 py-2 rounded-xl font-bold text-sm transition-all text-pink-400 hover:text-pink-600";
-      } else {
-        viewCheck.classList.add('hidden');
-        viewHistory.classList.remove('hidden');
-        tabBtnHistory.className = "flex-1 py-2 rounded-xl font-bold text-sm transition-all bg-white text-pink-600 shadow-sm";
-        tabBtnCheck.className = "flex-1 py-2 rounded-xl font-bold text-sm transition-all text-pink-400 hover:text-pink-600";
-        renderHistoryList();
-      }
+    /* ===================== Tabs ===================== */
+    function switchTab(name) {
+      ['fridge', 'log', 'menu'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.toggle('hidden', t !== name);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (t === name) {
+          btn.className = "flex-1 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all bg-white text-emerald-700 shadow-sm";
+        } else {
+          btn.className = "flex-1 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all text-emerald-400 hover:text-emerald-600";
+        }
+      });
+      if (name === 'fridge') renderFridgeList();
+      if (name === 'log') { renderCalendar(); renderDayDetail(); }
+      if (name === 'menu') renderMenuBoard();
     }
 
-    function renderChecklist() {
-      const container = document.getElementById('checklist-container');
-      container.innerHTML = '';
+    /* ===================== Fridge: receipt OCR ===================== */
+    async function handleReceiptFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const progressWrap = document.getElementById('ocr-progress');
+      const bar = document.getElementById('ocr-progress-bar');
+      const text = document.getElementById('ocr-progress-text');
+      progressWrap.classList.remove('hidden');
+      bar.style.width = '0%';
+      text.innerText = '이미지 불러오는 중...';
 
-      currentQuestions.forEach((q) => {
-        const isChecked = !!checkedState[q.id];
-        const item = document.createElement('div');
-        item.className = `p-3 rounded-2xl transition border flex items-start gap-3 cursor-pointer ${
-          isChecked ? 'bg-pink-50 border-pink-300 shadow-sm' : 'bg-gray-50/70 border-gray-100 hover:bg-pink-50/40'
-        }`;
-        
-        item.onclick = (e) => {
-          // Prevent double trigger when clicking input directly
-          if (e.target.tagName !== 'INPUT') {
-            toggleCheck(q.id);
+      try {
+        const result = await Tesseract.recognize(file, 'kor+eng', {
+          logger: (m) => {
+            if (m.status === 'recognizing text') {
+              const pct = Math.round((m.progress || 0) * 100);
+              bar.style.width = pct + '%';
+              text.innerText = `품목 인식 중... ${pct}%`;
+            } else if (m.status) {
+              text.innerText = m.status;
+            }
           }
-        };
-
-        item.innerHTML = `
-          <div class="pt-0.5">
-            <input type="checkbox" id="chk-${q.id}" ${isChecked ? 'checked' : ''} onchange="toggleCheck(${q.id})" class="w-5 h-5 text-pink-500 rounded-md accent-pink-500 cursor-pointer">
-          </div>
-          <div class="flex-1">
-            <label for="chk-${q.id}" class="text-xs sm:text-sm font-medium text-gray-800 leading-snug cursor-pointer select-none">
-              ${q.text}
-            </label>
-            <span class="inline-block mt-1 text-[10px] text-pink-500 font-semibold bg-pink-100 px-2 py-0.5 rounded-md">
-              #${q.category || '기타'}
-            </span>
-          </div>
-        `;
-        container.appendChild(item);
-      });
-
-      calculateScore();
-    }
-
-    function toggleCheck(id) {
-      checkedState[id] = !checkedState[id];
-      renderChecklist();
-    }
-
-    function calculateScore() {
-      const totalCount = currentQuestions.length;
-      const checkedCount = currentQuestions.filter(q => checkedState[q.id]).length;
-      const ratio = totalCount > 0 ? (checkedCount / totalCount) : 0;
-      const percentage = Math.round(ratio * 100);
-
-      document.getElementById('score-num').innerText = checkedCount;
-      document.getElementById('total-num').innerText = totalCount;
-      document.getElementById('pass-rate').innerText = `달성률 ${percentage}%`;
-      document.getElementById('progress-bar').style.width = `${percentage}%`;
-
-      const gradeBadge = document.getElementById('grade-badge');
-      const verdictEmoji = document.getElementById('verdict-emoji');
-
-      if (checkedCount === 0) {
-        gradeBadge.innerText = "체크 항목을 눌러 검증해보세요!";
-        gradeBadge.className = "inline-block mt-2 px-3 py-1 bg-white/80 text-pink-600 text-xs font-bold rounded-xl shadow-sm";
-        verdictEmoji.innerText = "🤔";
-      } else if (ratio >= 0.9) {
-        gradeBadge.innerText = "💖 [천상계 벤츠남] 당장 놓치지 마세요!!";
-        gradeBadge.className = "inline-block mt-2 px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-sm";
-        verdictEmoji.innerText = "👑";
-        triggerConfettiOnce();
-      } else if (ratio >= 0.7) {
-        gradeBadge.innerText = "✨ [우량주 훈남] 적극 애프터 추천해요!";
-        gradeBadge.className = "inline-block mt-2 px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-xl shadow-sm";
-        verdictEmoji.innerText = "🥰";
-      } else if (ratio >= 0.5) {
-        gradeBadge.innerText = "⚠️ [무난한 보통남] 한 번 더 만나볼 만해요.";
-        gradeBadge.className = "inline-block mt-2 px-3 py-1 bg-amber-400 text-gray-900 text-xs font-bold rounded-xl shadow-sm";
-        verdictEmoji.innerText = "🧐";
-      } else if (ratio >= 0.3) {
-        gradeBadge.innerText = "🚨 [주의 필요남] 찝찝한 신호를 재점검하세요!";
-        gradeBadge.className = "inline-block mt-2 px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded-xl shadow-sm";
-        verdictEmoji.innerText = "😰";
-      } else {
-        gradeBadge.innerText = "🛑 [위험! 탈출구 확보] 총알 회피 필수!";
-        gradeBadge.className = "inline-block mt-2 px-3 py-1 bg-red-600 text-white text-xs font-bold rounded-xl shadow-sm";
-        verdictEmoji.innerText = "🏃‍♀️";
-      }
-    }
-
-    let confettiTriggered = false;
-    function triggerConfettiOnce() {
-      if (!confettiTriggered && typeof confetti === 'function') {
-        confetti({
-          particleCount: 70,
-          spread: 60,
-          origin: { y: 0.6 }
         });
-        confettiTriggered = true;
+        const items = parseReceiptText(result.data.text);
+        progressWrap.classList.add('hidden');
+        e.target.value = '';
+        if (items.length === 0) {
+          showToast('영수증에서 품목을 찾지 못했어요. 직접 추가해주세요 🙏');
+          return;
+        }
+        const defaultExpiry = new Date();
+        defaultExpiry.setDate(defaultExpiry.getDate() + 7);
+        pendingItems = items.map(name => ({
+          tempId: uid(),
+          name,
+          category: '기타',
+          expiry: toISODate(defaultExpiry)
+        }));
+        renderPendingReview();
+        showToast(`${items.length}개 품목을 인식했어요! 확인 후 담아주세요 ✅`);
+      } catch (err) {
+        progressWrap.classList.add('hidden');
+        showToast('인식에 실패했어요. 사진을 다시 시도해주세요.');
       }
     }
 
-    function addCustomQuestion() {
-      const input = document.getElementById('custom-input');
-      const val = input.value.trim();
-      if (!val) {
-        showToast("추가할 항목 내용을 입력해주세요!");
+    // Heuristic parser: receipts are noisy OCR text, so we strip trailing
+    // prices/quantities and drop lines that are clearly not item names.
+    function parseReceiptText(rawText) {
+      const excludeKeywords = ['합계', '부가세', '과세', '면세', '받을금액', '거스름', '카드', '현금', '승인',
+        '가맹점', '사업자', '대표', '전화', 'TEL', '영수증', '포인트', '할인', '매장', '주소', '품명', '수량',
+        '금액', '바코드', '고객', '거래', '일시', '번호', 'NO.', '결제', '잔액', '적립', '방문', '감사'];
+
+      const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+      const candidates = [];
+      const seen = new Set();
+
+      for (let line of lines) {
+        const upper = line.toUpperCase();
+        if (excludeKeywords.some(k => upper.includes(k.toUpperCase()))) continue;
+
+        // strip trailing price/quantity numbers e.g. "우유 1,000원", "계란 2 3000"
+        let cleaned = line
+          .replace(/[\d,]{2,}\s*원?\s*$/g, '')
+          .replace(/^\s*\d+\s*[.)]\s*/, '')
+          .replace(/\s{2,}\d+\s*$/, '')
+          .replace(/[*#=~\-_]{2,}/g, '')
+          .trim();
+
+        // drop leftover pure numbers/symbols or too-short fragments
+        if (!/[가-힣a-zA-Z]/.test(cleaned)) continue;
+        if (cleaned.length < 2 || cleaned.length > 20) continue;
+
+        const key = cleaned.replace(/\s/g, '');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        candidates.push(cleaned);
+        if (candidates.length >= 25) break;
+      }
+      return candidates;
+    }
+
+    function renderPendingReview() {
+      const wrap = document.getElementById('pending-review');
+      const list = document.getElementById('pending-list');
+      if (pendingItems.length === 0) {
+        wrap.classList.add('hidden');
         return;
       }
+      wrap.classList.remove('hidden');
+      list.innerHTML = pendingItems.map(item => `
+        <div class="flex items-center gap-2 bg-amber-50/60 border border-amber-100 rounded-xl p-2">
+          <input type="text" value="${escapeHtml(item.name)}" onchange="updatePendingField('${item.tempId}','name',this.value)" class="flex-1 min-w-0 text-sm px-2 py-1.5 border border-amber-200 rounded-lg bg-white">
+          <input type="date" value="${item.expiry}" onchange="updatePendingField('${item.tempId}','expiry',this.value)" class="text-xs px-1.5 py-1.5 border border-amber-200 rounded-lg bg-white w-[128px]">
+          <button onclick="removePending('${item.tempId}')" class="text-gray-300 hover:text-red-500 text-sm px-1">✕</button>
+        </div>
+      `).join('');
+    }
 
-      const newId = Date.now();
-      currentQuestions.push({
-        id: newId,
-        text: val,
-        category: "나만의기준"
+    function updatePendingField(tempId, field, value) {
+      const item = pendingItems.find(p => p.tempId === tempId);
+      if (item) item[field] = value;
+    }
+
+    function removePending(tempId) {
+      pendingItems = pendingItems.filter(p => p.tempId !== tempId);
+      renderPendingReview();
+    }
+
+    function cancelPending() {
+      pendingItems = [];
+      renderPendingReview();
+    }
+
+    function confirmAddPending() {
+      if (pendingItems.length === 0) return;
+      pendingItems.forEach(p => {
+        fridgeItems.push({
+          id: uid(), name: p.name.trim() || '이름없음', category: p.category,
+          expiry: p.expiry || '', addedAt: toISODate(new Date()), checked: false
+        });
       });
-      checkedState[newId] = true; // Auto check newly added custom rule
-
-      input.value = '';
-      renderChecklist();
-      showToast("새로운 검증 항목이 추가되었습니다! 🎯");
+      saveFridge();
+      showToast(`${pendingItems.length}개 품목을 냉장고에 담았어요! 🧊`);
+      pendingItems = [];
+      renderPendingReview();
+      renderFridgeList();
     }
 
-    function resetCurrentForm() {
-      if (confirm("입력한 내용을 모두 초기화할까요?")) {
-        checkedState = {};
-        document.getElementById('target-name').value = '';
-        document.getElementById('target-notes').value = '';
-        confettiTriggered = false;
-        renderChecklist();
-        showToast("초기화 되었습니다.");
-      }
+    /* ===================== Fridge: manual add & list ===================== */
+    function addManualItem() {
+      const nameInput = document.getElementById('manual-name');
+      const name = nameInput.value.trim();
+      const category = document.getElementById('manual-category').value;
+      const expiry = document.getElementById('manual-expiry').value;
+      if (!name) { showToast('품목명을 입력해주세요.'); return; }
+      fridgeItems.push({ id: uid(), name, category, expiry, addedAt: toISODate(new Date()), checked: false });
+      saveFridge();
+      nameInput.value = '';
+      document.getElementById('manual-expiry').value = '';
+      renderFridgeList();
+      showToast(`'${name}' 추가되었어요! 🥗`);
     }
 
-    function saveToHistory() {
-      const name = document.getElementById('target-name').value.trim() || '이름 없음';
-      const date = document.getElementById('target-date').value || new Date().toISOString().split('T')[0];
-      const notes = document.getElementById('target-notes').value.trim();
-
-      const totalCount = currentQuestions.length;
-      const checkedQuestions = currentQuestions.filter(q => checkedState[q.id]);
-      const uncheckedQuestions = currentQuestions.filter(q => !checkedState[q.id]);
-      const checkedCount = checkedQuestions.length;
-      const ratio = totalCount > 0 ? (checkedCount / totalCount) : 0;
-      const percentage = Math.round(ratio * 100);
-
-      let verdictTitle = "보통남";
-      if (ratio >= 0.9) verdictTitle = "💖 천상계 벤츠남";
-      else if (ratio >= 0.7) verdictTitle = "✨ 우량주 훈남";
-      else if (ratio >= 0.5) verdictTitle = "⚠️ 보통남";
-      else if (ratio >= 0.3) verdictTitle = "🚨 주의 필요남";
-      else verdictTitle = "🛑 탈출 권장남";
-
-      const record = {
-        id: Date.now(),
-        name,
-        date,
-        notes,
-        score: checkedCount,
-        total: totalCount,
-        percentage,
-        verdictTitle,
-        checkedTexts: checkedQuestions.map(q => q.text),
-        uncheckedTexts: uncheckedQuestions.map(q => q.text)
-      };
-
-      const history = getHistory();
-      history.unshift(record);
-      localStorage.setItem('blind_date_history', JSON.stringify(history));
-
-      updateHistoryBadge();
-      showToast(`'${name}'님과의 검증 결과가 저장되었습니다! 💾`);
-      switchTab('history');
+    function dDayInfo(expiry) {
+      if (!expiry) return { label: '기한 미설정', cls: 'bg-gray-100 text-gray-400', days: Infinity };
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const exp = new Date(expiry + 'T00:00:00');
+      const days = Math.round((exp - today) / 86400000);
+      if (days < 0) return { label: `만료 ${Math.abs(days)}일 경과`, cls: 'bg-red-100 text-red-600', days };
+      if (days === 0) return { label: 'D-Day 오늘까지!', cls: 'bg-red-100 text-red-600', days };
+      if (days <= 3) return { label: `D-${days}`, cls: 'bg-orange-100 text-orange-600', days };
+      if (days <= 7) return { label: `D-${days}`, cls: 'bg-amber-100 text-amber-600', days };
+      return { label: `D-${days}`, cls: 'bg-emerald-100 text-emerald-600', days };
     }
 
-    function getHistory() {
-      const data = localStorage.getItem('blind_date_history');
-      return data ? JSON.parse(data) : [];
-    }
+    function renderFridgeList() {
+      const container = document.getElementById('fridge-list');
+      const sorted = [...fridgeItems].sort((a, b) => {
+        const da = a.expiry ? dDayInfo(a.expiry).days : Infinity;
+        const db = b.expiry ? dDayInfo(b.expiry).days : Infinity;
+        return da - db;
+      });
+      document.getElementById('fridge-count').innerText = `(${fridgeItems.length})`;
 
-    function updateHistoryBadge() {
-      const history = getHistory();
-      const badge = document.getElementById('history-badge');
-      if (history.length > 0) {
-        badge.innerText = history.length;
-        badge.classList.remove('hidden');
+      if (sorted.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-gray-400"><span class="text-3xl">🧺</span><p class="text-xs mt-2">냉장고가 비어있어요. 영수증을 스캔하거나 직접 추가해보세요!</p></div>`;
       } else {
-        badge.classList.add('hidden');
+        container.innerHTML = sorted.map(item => {
+          const d = dDayInfo(item.expiry);
+          return `
+          <div class="flex items-center gap-2 p-2.5 rounded-xl border ${item.checked ? 'bg-emerald-50 border-emerald-300' : 'bg-gray-50/60 border-gray-100'} transition">
+            <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleItemCheck('${item.id}')" class="w-4.5 h-4.5 accent-emerald-500 cursor-pointer">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm font-medium truncate">${escapeHtml(item.name)}</span>
+                <span class="text-[10px] text-gray-400 shrink-0">#${item.category}</span>
+              </div>
+              <input type="date" value="${item.expiry || ''}" onchange="updateExpiry('${item.id}', this.value)" class="text-[11px] text-gray-400 border-0 p-0 bg-transparent mt-0.5 focus:outline-none">
+            </div>
+            <span class="text-[10px] font-bold px-2 py-1 rounded-lg shrink-0 ${d.cls}">${d.label}</span>
+            <button onclick="deleteFridgeItem('${item.id}')" class="text-gray-300 hover:text-red-500 text-sm px-1 shrink-0">✕</button>
+          </div>`;
+        }).join('');
+      }
+
+      const selectedCount = fridgeItems.filter(i => i.checked).length;
+      document.getElementById('selected-count').innerText = selectedCount;
+      const copyBtn = document.getElementById('btn-copy-selected');
+      const searchBtn = document.getElementById('btn-search-selected');
+      [copyBtn, searchBtn].forEach(btn => {
+        btn.disabled = selectedCount === 0;
+        btn.className = selectedCount === 0
+          ? "flex-1 text-xs font-bold bg-gray-100 text-gray-400 py-2 rounded-xl transition disabled:cursor-not-allowed"
+          : "flex-1 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-xl transition active:scale-95";
+      });
+    }
+
+    function toggleItemCheck(id) {
+      const item = fridgeItems.find(i => i.id === id);
+      if (item) { item.checked = !item.checked; saveFridge(); renderFridgeList(); }
+    }
+
+    function updateExpiry(id, value) {
+      const item = fridgeItems.find(i => i.id === id);
+      if (item) { item.expiry = value; saveFridge(); renderFridgeList(); }
+    }
+
+    function deleteFridgeItem(id) {
+      fridgeItems = fridgeItems.filter(i => i.id !== id);
+      saveFridge();
+      renderFridgeList();
+    }
+
+    function getSelectedNames() {
+      return fridgeItems.filter(i => i.checked).map(i => i.name);
+    }
+
+    function copySelectedItems() {
+      const names = getSelectedNames();
+      if (names.length === 0) return;
+      copyToClipboardText(names.join(', '));
+    }
+
+    function searchRecipeForSelected() {
+      const names = getSelectedNames();
+      if (names.length === 0) return;
+      copyToClipboardText(names.join(', '));
+      const query = encodeURIComponent(names.join(' ') + ' 레시피');
+      window.open(`https://search.naver.com/search.naver?query=${query}`, '_blank');
+    }
+
+    /* ===================== 집밥로그 (calendar) ===================== */
+    let currentMonth = new Date(); currentMonth.setDate(1);
+    let selectedDate = toISODate(new Date());
+    let logRating = 0;
+    let logTags = [];
+
+    function changeMonth(delta) {
+      currentMonth.setMonth(currentMonth.getMonth() + delta);
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      document.getElementById('calendar-title').innerText = `${currentMonth.getFullYear()}년 ${currentMonth.getMonth() + 1}월`;
+      const grid = document.getElementById('calendar-grid');
+      const year = currentMonth.getFullYear(), month = currentMonth.getMonth();
+      const firstWeekday = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const todayStr = toISODate(new Date());
+
+      let cells = '';
+      for (let i = 0; i < firstWeekday; i++) cells += `<div></div>`;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${pad(month + 1)}-${pad(d)}`;
+        const entries = cookLogs.filter(l => l.date === dateStr);
+        const isToday = dateStr === todayStr;
+        const isSelected = dateStr === selectedDate;
+        let base = "aspect-square flex flex-col items-center justify-center rounded-xl text-xs cursor-pointer transition relative ";
+        if (isSelected) base += "bg-emerald-500 text-white font-bold shadow-sm";
+        else if (isToday) base += "bg-emerald-50 text-emerald-700 font-bold border border-emerald-300";
+        else base += "hover:bg-emerald-50 text-gray-600";
+        cells += `
+          <div class="${base}" onclick="selectDay('${dateStr}')">
+            <span>${d}</span>
+            ${entries.length > 0 ? `<span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-emerald-400'} mt-0.5"></span>` : ''}
+          </div>`;
+      }
+      grid.innerHTML = cells;
+    }
+
+    function selectDay(dateStr) {
+      selectedDate = dateStr;
+      document.getElementById('add-log-form').classList.add('hidden');
+      renderCalendar();
+      renderDayDetail();
+    }
+
+    function toggleAddLogForm() {
+      const form = document.getElementById('add-log-form');
+      form.classList.toggle('hidden');
+      if (!form.classList.contains('hidden')) {
+        document.getElementById('log-name').value = '';
+        document.getElementById('log-link').value = '';
+        document.getElementById('log-memo').value = '';
+        logRating = 0; logTags = [];
+        renderStarInput();
+        renderLogTagChips();
       }
     }
 
-    function renderHistoryList() {
-      const container = document.getElementById('history-container');
-      const history = getHistory();
+    function renderStarInput() {
+      const wrap = document.getElementById('log-star-input');
+      wrap.innerHTML = [1, 2, 3, 4, 5].map(n => `
+        <button type="button" class="star-btn text-2xl leading-none" onclick="setLogRating(${n})">${n <= logRating ? '⭐' : '☆'}</button>
+      `).join('');
+    }
+    function setLogRating(n) { logRating = n; renderStarInput(); }
 
-      if (history.length === 0) {
-        container.innerHTML = `
-          <div class="text-center py-10 text-gray-400">
-            <span class="text-4xl">📭</span>
-            <p class="text-xs mt-2">아직 저장된 판독 결과가 없어요.<br>소개팅 후 체크리스트를 작성해보세요!</p>
-          </div>
-        `;
+    function addLogTag() {
+      const input = document.getElementById('log-tag-input');
+      const val = input.value.trim();
+      if (!val) return;
+      if (!logTags.includes(val)) logTags.push(val);
+      input.value = '';
+      renderLogTagChips();
+    }
+    function removeLogTag(idx) { logTags.splice(idx, 1); renderLogTagChips(); }
+    function renderLogTagChips() {
+      document.getElementById('log-tag-chips').innerHTML = logTags.map((t, i) => `
+        <span class="text-[11px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full flex items-center gap-1">
+          #${escapeHtml(t)} <button onclick="removeLogTag(${i})" class="text-emerald-400 hover:text-emerald-700">✕</button>
+        </span>
+      `).join('');
+    }
+
+    function submitCookLog() {
+      const name = document.getElementById('log-name').value.trim();
+      const link = document.getElementById('log-link').value.trim();
+      const memo = document.getElementById('log-memo').value.trim();
+      if (!name) { showToast('요리명을 입력해주세요.'); return; }
+      cookLogs.push({ id: uid(), date: selectedDate, name, link, rating: logRating, tags: [...logTags], memo });
+      saveLogs();
+      document.getElementById('add-log-form').classList.add('hidden');
+      renderCalendar();
+      renderDayDetail();
+      showToast(`'${name}' 기록을 저장했어요! 🍚`);
+    }
+
+    function deleteCookLog(id) {
+      cookLogs = cookLogs.filter(l => l.id !== id);
+      saveLogs();
+      renderCalendar();
+      renderDayDetail();
+    }
+
+    function renderStars(rating) {
+      return [1, 2, 3, 4, 5].map(n => n <= rating ? '⭐' : '☆').join('');
+    }
+
+    function renderDayDetail() {
+      const [y, m, d] = selectedDate.split('-');
+      document.getElementById('day-detail-title').innerText = `📅 ${y}년 ${Number(m)}월 ${Number(d)}일`;
+      const entries = cookLogs.filter(l => l.date === selectedDate);
+      const list = document.getElementById('day-detail-list');
+      if (entries.length === 0) {
+        list.innerHTML = `<div class="text-center py-6 text-gray-400"><p class="text-xs">이 날짜에 기록된 집밥이 없어요.</p></div>`;
         return;
       }
-
-      container.innerHTML = '';
-      history.forEach(item => {
-        const checkedList = item.checkedTexts || [];
-        const uncheckedList = item.uncheckedTexts || [];
-        
-        const card = document.createElement('div');
-        card.className = "bg-pink-50/50 rounded-2xl p-4 border border-pink-200 shadow-sm relative space-y-3";
-        card.innerHTML = `
+      list.innerHTML = entries.map(e => `
+        <div class="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 space-y-1.5">
           <div class="flex items-start justify-between">
             <div>
-              <div class="flex items-center gap-2">
-                <h3 class="font-bold text-gray-800 text-sm">${escapeHtml(item.name)}</h3>
-                <span class="text-[10px] text-gray-400">${item.date}</span>
-              </div>
-              <div class="mt-1 font-semibold text-xs text-pink-600">
-                ${item.verdictTitle} (${item.score}/${item.total}점 · ${item.percentage}%)
-              </div>
+              <div class="font-bold text-sm text-gray-800">${escapeHtml(e.name)}</div>
+              <div class="text-xs">${renderStars(e.rating)}</div>
             </div>
-            <button onclick="deleteHistoryItem(${item.id})" class="text-gray-300 hover:text-red-500 text-xs p-1" title="삭제">
-              ✕
-            </button>
+            <button onclick="deleteCookLog('${e.id}')" class="text-gray-300 hover:text-red-500 text-xs px-1">✕</button>
           </div>
+          ${e.tags && e.tags.length ? `<div class="flex flex-wrap gap-1">${e.tags.map(t => `<span class="text-[10px] bg-white text-emerald-600 border border-emerald-200 px-1.5 py-0.5 rounded-full">#${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+          ${e.link ? `<a href="${escapeAttr(e.link)}" target="_blank" rel="noopener noreferrer" class="inline-block text-[11px] font-bold text-emerald-600 underline">🔗 레시피 보기</a>` : ''}
+          ${e.memo ? `<p class="text-xs text-gray-500 bg-white/70 p-2 rounded-lg">${escapeHtml(e.memo)}</p>` : ''}
+        </div>
+      `).join('');
+    }
 
-          ${item.notes ? `
-            <div class="text-xs bg-white p-2.5 rounded-xl border border-pink-100 text-gray-600">
-              <span class="font-bold text-pink-500">메모:</span> ${escapeHtml(item.notes)}
-            </div>
-          ` : ''}
+    /* ===================== 메뉴판 ===================== */
+    let menuSortMode = 'rating';
+    let menuTagFilter = null;
 
-          <!-- Details Toggle Button -->
-          <button onclick="toggleHistoryDetail(${item.id})" class="w-full text-xs font-bold py-1.5 px-3 bg-pink-100/70 hover:bg-pink-200/70 text-pink-700 rounded-xl transition flex items-center justify-between">
-            <span id="detail-btn-text-${item.id}">🔍 세부 검증 항목 보기</span>
-            <span id="detail-btn-arrow-${item.id}">▼</span>
-          </button>
+    function setMenuSort(mode) {
+      menuSortMode = mode;
+      menuTagFilter = null;
+      renderMenuBoard();
+    }
 
-          <!-- Expandable Detail Container -->
-          <div id="detail-content-${item.id}" class="hidden space-y-2 pt-1 border-t border-pink-100 text-xs">
-            ${checkedList.length > 0 ? `
-              <div>
-                <div class="font-bold text-emerald-600 mb-1 flex items-center gap-1">
-                  <span>✅</span> 만족한 항목 (${checkedList.length}개)
-                </div>
-                <ul class="space-y-1 pl-1">
-                  ${checkedList.map(text => `<li class="text-gray-700 bg-white/80 px-2 py-1 rounded-lg border border-emerald-100">• ${escapeHtml(text)}</li>`).join('')}
-                </ul>
-              </div>
-            ` : ''}
-
-            ${uncheckedList.length > 0 ? `
-              <div class="mt-2">
-                <div class="font-bold text-rose-500 mb-1 flex items-center gap-1">
-                  <span>❌</span> 미흡/아쉬운 항목 (${uncheckedList.length}개)
-                </div>
-                <ul class="space-y-1 pl-1">
-                  ${uncheckedList.map(text => `<li class="text-gray-500 bg-white/50 px-2 py-1 rounded-lg border border-rose-100">• ${escapeHtml(text)}</li>`).join('')}
-                </ul>
-              </div>
-            ` : ''}
-          </div>
-
-          <div class="pt-1 flex justify-end">
-            <button onclick="copyHistorySummary(${item.id})" class="text-[11px] font-bold text-pink-600 hover:text-pink-700 bg-white px-2.5 py-1 rounded-lg border border-pink-200 shadow-sm flex items-center gap-1">
-              <span>📋</span> 세부사항 요약 복사
-            </button>
-          </div>
-        `;
-        container.appendChild(card);
+    function aggregateMenu() {
+      const map = new Map();
+      cookLogs.forEach(l => {
+        const key = l.name.trim().toLowerCase();
+        if (!map.has(key)) {
+          map.set(key, { name: l.name.trim(), ratings: [], tags: new Set(), link: l.link, lastDate: l.date, count: 0 });
+        }
+        const entry = map.get(key);
+        entry.ratings.push(l.rating || 0);
+        (l.tags || []).forEach(t => entry.tags.add(t));
+        entry.count++;
+        if (l.date >= entry.lastDate) { entry.lastDate = l.date; if (l.link) entry.link = l.link; }
       });
+      return Array.from(map.values()).map(e => ({
+        ...e,
+        avgRating: e.ratings.length ? e.ratings.reduce((a, b) => a + b, 0) / e.ratings.length : 0,
+        tags: Array.from(e.tags)
+      }));
     }
 
-    function toggleHistoryDetail(id) {
-      const content = document.getElementById(`detail-content-${id}`);
-      const btnText = document.getElementById(`detail-btn-text-${id}`);
-      const btnArrow = document.getElementById(`detail-btn-arrow-${id}`);
+    function renderMenuBoard() {
+      ['rating', 'name', 'tag'].forEach(m => {
+        const btn = document.getElementById(`sort-btn-${m}`);
+        btn.className = m === menuSortMode
+          ? "flex-1 py-1.5 rounded-lg text-xs font-bold transition bg-white text-emerald-700 shadow-sm"
+          : "flex-1 py-1.5 rounded-lg text-xs font-bold transition text-emerald-500 hover:text-emerald-700";
+      });
 
-      if (content.classList.contains('hidden')) {
-        content.classList.remove('hidden');
-        btnText.innerText = "🔒 세부 검증 항목 접기";
-        btnArrow.innerText = "▲";
+      const menu = aggregateMenu();
+      const tagFilterWrap = document.getElementById('menu-tag-filters');
+      const list = document.getElementById('menu-list');
+
+      if (menu.length === 0) {
+        tagFilterWrap.classList.add('hidden');
+        list.innerHTML = `<div class="text-center py-8 text-gray-400"><span class="text-3xl">🍽️</span><p class="text-xs mt-2">아직 집밥로그가 없어요. 캘린더에서 기록을 추가해보세요!</p></div>`;
+        return;
+      }
+
+      if (menuSortMode === 'tag') {
+        const allTags = Array.from(new Set(menu.flatMap(m => m.tags))).sort((a, b) => a.localeCompare(b, 'ko'));
+        tagFilterWrap.classList.remove('hidden');
+        tagFilterWrap.innerHTML = ['전체', ...allTags].map(t => {
+          const active = (t === '전체' && !menuTagFilter) || t === menuTagFilter;
+          return `<button onclick="setMenuTagFilter(${t === '전체' ? 'null' : `'${escapeAttr(t)}'`})" class="text-[11px] font-bold px-2.5 py-1 rounded-full border transition ${active ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-emerald-600 border-emerald-200'}">#${escapeHtml(t)}</button>`;
+        }).join('');
       } else {
-        content.classList.add('hidden');
-        btnText.innerText = "🔍 세부 검증 항목 보기";
-        btnArrow.innerText = "▼";
+        tagFilterWrap.classList.add('hidden');
       }
+
+      let filtered = menu;
+      if (menuSortMode === 'tag' && menuTagFilter) {
+        filtered = filtered.filter(m => m.tags.includes(menuTagFilter));
+      }
+
+      if (menuSortMode === 'rating') {
+        filtered = [...filtered].sort((a, b) => b.avgRating - a.avgRating || a.name.localeCompare(b.name, 'ko'));
+      } else {
+        filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+      }
+
+      if (filtered.length === 0) {
+        list.innerHTML = `<div class="text-center py-6 text-gray-400"><p class="text-xs">해당 태그의 메뉴가 없어요.</p></div>`;
+        return;
+      }
+
+      list.innerHTML = filtered.map(m => `
+        <div class="bg-emerald-50/40 border border-emerald-100 rounded-2xl p-3 space-y-1.5">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="font-bold text-sm text-gray-800">${escapeHtml(m.name)}</div>
+              <div class="text-xs">${renderStars(Math.round(m.avgRating))} <span class="text-gray-400 text-[10px]">(${m.avgRating.toFixed(1)} · ${m.count}회 조리)</span></div>
+            </div>
+          </div>
+          ${m.tags.length ? `<div class="flex flex-wrap gap-1">${m.tags.map(t => `<span class="text-[10px] bg-white text-emerald-600 border border-emerald-200 px-1.5 py-0.5 rounded-full">#${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+          <div class="flex items-center justify-between pt-0.5">
+            <span class="text-[10px] text-gray-400">최근 조리: ${m.lastDate}</span>
+            ${m.link ? `<a href="${escapeAttr(m.link)}" target="_blank" rel="noopener noreferrer" class="text-[11px] font-bold text-emerald-600 underline">🔗 레시피 보기</a>` : ''}
+          </div>
+        </div>
+      `).join('');
     }
 
-    function deleteHistoryItem(id) {
-      let history = getHistory();
-      history = history.filter(item => item.id !== id);
-      localStorage.setItem('blind_date_history', JSON.stringify(history));
-      updateHistoryBadge();
-      renderHistoryList();
-      showToast("기록이 삭제되었습니다.");
+    function setMenuTagFilter(tag) {
+      menuTagFilter = tag;
+      renderMenuBoard();
     }
 
-    function clearAllHistory() {
-      if (confirm("저장된 모든 소개팅 기록을 삭제할까요?")) {
-        localStorage.removeItem('blind_date_history');
-        updateHistoryBadge();
-        renderHistoryList();
-        showToast("모든 기록이 삭제되었습니다.");
-      }
-    }
-
-    function copySummaryToClipboard() {
-      const name = document.getElementById('target-name').value.trim() || '소개팅 남';
-      const date = document.getElementById('target-date').value || new Date().toISOString().split('T')[0];
-      const totalCount = currentQuestions.length;
-      const checkedQuestions = currentQuestions.filter(q => checkedState[q.id]);
-      const uncheckedQuestions = currentQuestions.filter(q => !checkedState[q.id]);
-      const checkedCount = checkedQuestions.length;
-      const percentage = Math.round((checkedCount / totalCount) * 100);
-      const notes = document.getElementById('target-notes').value.trim();
-
-      let summaryText = `🧸 [소개팅 남 판독 세부 리포트]\n`;
-      summaryText += `• 대상: ${name} (${date})\n`;
-      summaryText += `• 검증 점수: ${checkedCount} / ${totalCount}점 (${percentage}%)\n\n`;
-
-      if (checkedQuestions.length > 0) {
-        summaryText += `✅ [만족한 항목 (${checkedQuestions.length}개)]\n`;
-        checkedQuestions.forEach(q => {
-          summaryText += `• ${q.text}\n`;
-        });
-        summaryText += `\n`;
-      }
-
-      if (uncheckedQuestions.length > 0) {
-        summaryText += `❌ [미흡/아쉬운 항목 (${uncheckedQuestions.length}개)]\n`;
-        uncheckedQuestions.forEach(q => {
-          summaryText += `• ${q.text}\n`;
-        });
-        summaryText += `\n`;
-      }
-
-      if (notes) {
-        summaryText += `📝 [메모]\n${notes}\n\n`;
-      }
-
-      summaryText += `친구야 이 사람 어때? 같이 판독해줘! 💕`;
-
-      copyToClipboardText(summaryText);
-    }
-
-    function copyHistorySummary(id) {
-      const history = getHistory();
-      const item = history.find(h => h.id === id);
-      if (!item) return;
-
-      const checkedList = item.checkedTexts || [];
-      const uncheckedList = item.uncheckedTexts || [];
-
-      let summaryText = `🧸 [소개팅 남 판독 세부 리포트]\n`;
-      summaryText += `• 대상: ${item.name} (${item.date})\n`;
-      summaryText += `• 판독 결과: ${item.verdictTitle} (${item.score}/${item.total}점 · ${item.percentage}%)\n\n`;
-
-      if (checkedList.length > 0) {
-        summaryText += `✅ [만족한 항목 (${checkedList.length}개)]\n`;
-        checkedList.forEach(t => {
-          summaryText += `• ${t}\n`;
-        });
-        summaryText += `\n`;
-      }
-
-      if (uncheckedList.length > 0) {
-        summaryText += `❌ [미흡/아쉬운 항목 (${uncheckedList.length}개)]\n`;
-        uncheckedList.forEach(t => {
-          summaryText += `• ${t}\n`;
-        });
-        summaryText += `\n`;
-      }
-
-      if (item.notes) {
-        summaryText += `📝 [메모]\n${item.notes}\n\n`;
-      }
-
-      summaryText += `판독기에서 작성된 기록입니다 💌`;
-
-      copyToClipboardText(summaryText);
-    }
-
+    /* ===================== Utils ===================== */
     function copyToClipboardText(text) {
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      document.body.appendChild(textarea);
-      textarea.select();
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
       try {
         document.execCommand('copy');
-        showToast("클립보드에 요약 결과가 복사되었습니다! 📋");
+        showToast('클립보드에 복사했어요! 이제 레시피를 검색해보세요 📋');
       } catch (err) {
-        showToast("복사에 실패했습니다.");
+        showToast('복사에 실패했어요.');
       }
-      document.body.removeChild(textarea);
+      document.body.removeChild(ta);
     }
 
     function showToast(msg) {
       const toast = document.getElementById('toast');
-      const toastMsg = document.getElementById('toast-msg');
-      toastMsg.innerText = msg;
+      document.getElementById('toast-msg').innerText = msg;
       toast.classList.remove('opacity-0', 'pointer-events-none');
       toast.classList.add('opacity-100');
-
-      setTimeout(() => {
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
         toast.classList.remove('opacity-100');
         toast.classList.add('opacity-0', 'pointer-events-none');
-      }, 2500);
+      }, 2600);
     }
 
     function escapeHtml(str) {
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
+    function escapeAttr(str) { return escapeHtml(str); }
+
+    /* ===================== Init ===================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      document.getElementById('header-date').innerText = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+      switchTab('fridge');
+      renderStarInput();
+    });
   </script>
 </body>
 </html>
