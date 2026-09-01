@@ -158,12 +158,36 @@
           <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
         </div>
         <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
+        <p class="text-[10px] text-gray-400 text-right mt-2">🟢 완료된 요리 &nbsp; ⚪ 계획된 요리</p>
       </section>
 
       <section class="bg-white rounded-3xl p-5 shadow-sm border-2 border-emerald-200 pop-in">
-        <div class="flex items-center justify-between mb-3">
-          <h2 id="day-detail-title" class="font-title text-lg text-emerald-700">📅 날짜를 선택하세요</h2>
-          <button onclick="toggleAddLogForm()" id="btn-toggle-add-log" class="text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-full transition">+ 기록 추가</button>
+        <div class="flex items-center justify-between mb-3 gap-2">
+          <h2 id="day-detail-title" class="font-title text-lg text-emerald-700 min-w-0 truncate">📅 날짜를 선택하세요</h2>
+          <div class="flex gap-1.5 shrink-0">
+            <button onclick="toggleAddPlanForm()" id="btn-toggle-add-plan" class="text-xs font-bold bg-sky-100 hover:bg-sky-200 text-sky-700 px-3 py-1.5 rounded-full transition">📝 계획 추가</button>
+            <button onclick="toggleAddLogForm()" id="btn-toggle-add-log" class="text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-full transition">+ 기록 추가</button>
+          </div>
+        </div>
+
+        <div id="add-plan-form" class="hidden space-y-2 mb-4 bg-sky-50/60 p-3 rounded-2xl border border-sky-100">
+          <p class="text-[11px] font-bold text-sky-600">📝 무슨 재료로 무슨 음식을 만들지 미리 계획해두세요</p>
+          <input type="text" id="plan-name" placeholder="만들 음식 (예: 된장찌개)" class="w-full text-sm px-3 py-2 border border-sky-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-300">
+          <input type="url" id="plan-link" placeholder="레시피 링크 (선택, https://...)" class="w-full text-sm px-3 py-2 border border-sky-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-300">
+          <div>
+            <label class="block text-[11px] font-bold text-gray-500 mb-1">냉장고에서 재료 고르기</label>
+            <div id="plan-fridge-picker" class="flex flex-wrap gap-1 max-h-24 overflow-y-auto custom-scrollbar"></div>
+          </div>
+          <div class="flex gap-2">
+            <input type="text" id="plan-tag-input" placeholder="재료 직접 입력 후 Enter (장볼 재료 등)" onkeydown="if(event.key==='Enter'){event.preventDefault();addPlanIngredient();}" class="flex-1 text-xs px-3 py-2 border border-sky-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-300">
+            <button onclick="addPlanIngredient()" class="text-xs font-bold bg-sky-100 text-sky-700 px-3 rounded-xl">추가</button>
+          </div>
+          <div id="plan-ingredient-chips" class="flex flex-wrap gap-1"></div>
+          <textarea id="plan-memo" rows="2" placeholder="메모 (선택)" class="w-full text-xs p-2.5 border border-sky-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-sky-300"></textarea>
+          <div class="flex gap-2 pt-1">
+            <button onclick="toggleAddPlanForm()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-500 font-bold py-2 rounded-xl text-sm">취소</button>
+            <button onclick="submitMealPlan()" class="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-bold py-2 rounded-xl text-sm active:scale-95">계획 저장</button>
+          </div>
         </div>
 
         <div id="add-log-form" class="hidden space-y-2 mb-4 bg-emerald-50/50 p-3 rounded-2xl border border-emerald-100">
@@ -182,6 +206,7 @@
           </div>
         </div>
 
+        <div id="day-detail-plans" class="space-y-2 mb-3"></div>
         <div id="day-detail-list" class="space-y-2"></div>
       </section>
 
@@ -243,6 +268,7 @@
     /* ===================== State & persistence ===================== */
     let fridgeItems = [];      // {id, name, category, location, expiry, addedAt, checked}
     let cookLogs = [];         // {id, date, name, link, rating, tags:[], memo}
+    let mealPlans = [];        // {id, date, name, link, ingredients:[string], memo, createdAt} — planned meals not yet cooked
     let shoppingList = [];     // {id, name, category, addedAt, checked}
     let storageLocations = []; // {id, name} — customizable per household (냉장실/냉동실/김치냉장고/실온...)
     let pendingItems = [];     // items awaiting confirmation before entering the fridge (from OCR or shopping list)
@@ -300,6 +326,7 @@
     function loadState() {
       fridgeItems = JSON.parse(localStorage.getItem('fridge_items_v1') || '[]');
       cookLogs = JSON.parse(localStorage.getItem('cook_logs_v1') || '[]');
+      mealPlans = JSON.parse(localStorage.getItem('meal_plans_v1') || '[]');
       shoppingList = JSON.parse(localStorage.getItem('shopping_list_v1') || '[]');
       storageLocations = JSON.parse(localStorage.getItem('storage_locations_v1') || 'null') || [
         { id: 'loc_fridge', name: '냉장실' },
@@ -315,6 +342,7 @@
     }
     function saveFridge() { localStorage.setItem('fridge_items_v1', JSON.stringify(fridgeItems)); schedulePush(); }
     function saveLogs() { localStorage.setItem('cook_logs_v1', JSON.stringify(cookLogs)); schedulePush(); }
+    function saveMealPlans() { localStorage.setItem('meal_plans_v1', JSON.stringify(mealPlans)); schedulePush(); }
     function saveShopping() { localStorage.setItem('shopping_list_v1', JSON.stringify(shoppingList)); schedulePush(); }
     function saveLocations() { localStorage.setItem('storage_locations_v1', JSON.stringify(storageLocations)); schedulePush(); }
 
@@ -377,11 +405,13 @@
     function applyRemoteState(state) {
       fridgeItems = state.fridgeItems || fridgeItems;
       cookLogs = state.cookLogs || cookLogs;
+      mealPlans = state.mealPlans || mealPlans;
       shoppingList = state.shoppingList || shoppingList;
       if (state.storageLocations && state.storageLocations.length) storageLocations = state.storageLocations;
       // write straight to localStorage (not via save*()) so we don't immediately re-push what we just received
       localStorage.setItem('fridge_items_v1', JSON.stringify(fridgeItems));
       localStorage.setItem('cook_logs_v1', JSON.stringify(cookLogs));
+      localStorage.setItem('meal_plans_v1', JSON.stringify(mealPlans));
       localStorage.setItem('shopping_list_v1', JSON.stringify(shoppingList));
       localStorage.setItem('storage_locations_v1', JSON.stringify(storageLocations));
       renderManualLocationOptions();
@@ -391,7 +421,7 @@
     function refreshCurrentView() {
       if (!document.getElementById('view-fridge').classList.contains('hidden')) { renderLocationTabs(); renderFridgeList(); }
       if (!document.getElementById('view-shopping').classList.contains('hidden')) renderShoppingList();
-      if (!document.getElementById('view-log').classList.contains('hidden')) { renderCalendar(); renderDayDetail(); }
+      if (!document.getElementById('view-log').classList.contains('hidden')) { renderCalendar(); renderDayDetailPlans(); renderDayDetail(); }
       if (!document.getElementById('view-menu').classList.contains('hidden')) renderMenuBoard();
     }
 
@@ -403,7 +433,7 @@
 
     function pushStateToCloud() {
       if (!fsDb || !familySyncConfig) return;
-      const payload = JSON.stringify({ fridgeItems, cookLogs, shoppingList, storageLocations });
+      const payload = JSON.stringify({ fridgeItems, cookLogs, mealPlans, shoppingList, storageLocations });
       fsDb.collection('families').doc(familySyncConfig.groupId)
         .set({ payload, updatedAt: Date.now() }, { merge: true })
         .catch(err => console.error(err));
@@ -554,7 +584,7 @@
       });
       if (name === 'fridge') { renderLocationTabs(); renderFridgeList(); }
       if (name === 'shopping') renderShoppingList();
-      if (name === 'log') { renderCalendar(); renderDayDetail(); }
+      if (name === 'log') { renderCalendar(); renderDayDetailPlans(); renderDayDetail(); }
       if (name === 'menu') renderMenuBoard();
     }
 
@@ -932,6 +962,7 @@
       for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${year}-${pad(month + 1)}-${pad(d)}`;
         const entries = cookLogs.filter(l => l.date === dateStr);
+        const plans = mealPlans.filter(p => p.date === dateStr);
         const isToday = dateStr === todayStr;
         const isSelected = dateStr === selectedDate;
         let base = "aspect-square flex flex-col items-center justify-center rounded-xl text-xs cursor-pointer transition relative ";
@@ -941,7 +972,10 @@
         cells += `
           <div class="${base}" onclick="selectDay('${dateStr}')">
             <span>${d}</span>
-            ${entries.length > 0 ? `<span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-emerald-400'} mt-0.5"></span>` : ''}
+            <div class="flex items-center gap-0.5 h-1.5 mt-0.5">
+              ${entries.length > 0 ? `<span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-emerald-400'}"></span>` : ''}
+              ${plans.length > 0 ? `<span class="w-1.5 h-1.5 rounded-full border ${isSelected ? 'border-white' : 'border-sky-400'}"></span>` : ''}
+            </div>
           </div>`;
       }
       grid.innerHTML = cells;
@@ -950,7 +984,9 @@
     function selectDay(dateStr) {
       selectedDate = dateStr;
       document.getElementById('add-log-form').classList.add('hidden');
+      document.getElementById('add-plan-form').classList.add('hidden');
       renderCalendar();
+      renderDayDetailPlans();
       renderDayDetail();
     }
 
@@ -958,6 +994,7 @@
       const form = document.getElementById('add-log-form');
       form.classList.toggle('hidden');
       if (!form.classList.contains('hidden')) {
+        document.getElementById('add-plan-form').classList.add('hidden');
         document.getElementById('log-name').value = '';
         document.getElementById('log-link').value = '';
         document.getElementById('log-memo').value = '';
@@ -1014,6 +1051,189 @@
 
     function renderStars(rating) {
       return [1, 2, 3, 4, 5].map(n => n <= rating ? '⭐' : '☆').join('');
+    }
+
+    /* ===================== 집밥계획 (meal plans → execute into 집밥로그) ===================== */
+    let planIngredients = []; // temp chip list while the add-plan form is open
+    let executeState = {};    // planId -> { rating } while an execute panel is open
+
+    function toggleAddPlanForm() {
+      const form = document.getElementById('add-plan-form');
+      form.classList.toggle('hidden');
+      if (!form.classList.contains('hidden')) {
+        document.getElementById('add-log-form').classList.add('hidden');
+        document.getElementById('plan-name').value = '';
+        document.getElementById('plan-link').value = '';
+        document.getElementById('plan-memo').value = '';
+        planIngredients = [];
+        renderPlanFridgePicker();
+        renderPlanIngredientChips();
+      }
+    }
+
+    function renderPlanFridgePicker() {
+      const wrap = document.getElementById('plan-fridge-picker');
+      if (fridgeItems.length === 0) {
+        wrap.innerHTML = `<span class="text-[11px] text-gray-400">냉장고가 비어있어요. 아래에 직접 입력해주세요.</span>`;
+        return;
+      }
+      wrap.innerHTML = fridgeItems.map(i => `
+        <button type="button" onclick="addPlanIngredientFromFridge('${escapeAttr(i.name)}')" class="text-[11px] font-semibold bg-white border border-sky-200 text-sky-600 px-2 py-1 rounded-full hover:bg-sky-100">+ ${escapeHtml(i.name)}</button>
+      `).join('');
+    }
+
+    function addPlanIngredientFromFridge(name) {
+      if (!planIngredients.includes(name)) planIngredients.push(name);
+      renderPlanIngredientChips();
+    }
+
+    function addPlanIngredient() {
+      const input = document.getElementById('plan-tag-input');
+      const val = input.value.trim();
+      if (!val) return;
+      if (!planIngredients.includes(val)) planIngredients.push(val);
+      input.value = '';
+      renderPlanIngredientChips();
+    }
+
+    function removePlanIngredient(idx) {
+      planIngredients.splice(idx, 1);
+      renderPlanIngredientChips();
+    }
+
+    function renderPlanIngredientChips() {
+      document.getElementById('plan-ingredient-chips').innerHTML = planIngredients.map((t, i) => `
+        <span class="text-[11px] bg-sky-100 text-sky-700 px-2 py-1 rounded-full flex items-center gap-1">
+          ${escapeHtml(t)} <button onclick="removePlanIngredient(${i})" class="text-sky-400 hover:text-sky-700">✕</button>
+        </span>
+      `).join('');
+    }
+
+    function submitMealPlan() {
+      const name = document.getElementById('plan-name').value.trim();
+      const link = document.getElementById('plan-link').value.trim();
+      const memo = document.getElementById('plan-memo').value.trim();
+      if (!name) { showToast('만들 음식 이름을 입력해주세요.'); return; }
+      mealPlans.push({ id: uid(), date: selectedDate, name, link, ingredients: [...planIngredients], memo, createdAt: toISODate(new Date()) });
+      saveMealPlans();
+      document.getElementById('add-plan-form').classList.add('hidden');
+      renderCalendar();
+      renderDayDetailPlans();
+      showToast(`'${name}' 요리 계획을 저장했어요! 📝`);
+    }
+
+    function deleteMealPlan(id) {
+      mealPlans = mealPlans.filter(p => p.id !== id);
+      saveMealPlans();
+      delete executeState[id];
+      renderCalendar();
+      renderDayDetailPlans();
+    }
+
+    function toggleExecutePanel(id) {
+      const panel = document.getElementById(`execute-panel-${id}`);
+      if (!panel) return;
+      panel.classList.toggle('hidden');
+      if (!panel.classList.contains('hidden')) {
+        executeState[id] = executeState[id] || { rating: 0 };
+        renderExecuteStars(id);
+      }
+    }
+
+    function renderExecuteStars(id) {
+      const wrap = document.getElementById(`execute-star-input-${id}`);
+      if (!wrap) return;
+      const rating = (executeState[id] && executeState[id].rating) || 0;
+      wrap.innerHTML = [1, 2, 3, 4, 5].map(n => `
+        <button type="button" class="star-btn text-xl leading-none" onclick="setExecuteRating('${id}', ${n})">${n <= rating ? '⭐' : '☆'}</button>
+      `).join('');
+    }
+
+    function setExecuteRating(id, n) {
+      executeState[id] = executeState[id] || {};
+      executeState[id].rating = n;
+      renderExecuteStars(id);
+    }
+
+    function confirmExecutePlan(id) {
+      const plan = mealPlans.find(p => p.id === id);
+      if (!plan) return;
+      const dateInput = document.getElementById(`execute-date-${id}`);
+      const date = (dateInput && dateInput.value) || plan.date;
+      const rating = (executeState[id] && executeState[id].rating) || 0;
+
+      const consumeIds = [];
+      plan.ingredients.forEach((ing, idx) => {
+        const cb = document.getElementById(`execute-consume-${id}-${idx}`);
+        if (cb && cb.checked && cb.dataset.fridgeId) consumeIds.push(cb.dataset.fridgeId);
+      });
+
+      cookLogs.push({ id: uid(), date, name: plan.name, link: plan.link || '', rating, tags: [...plan.ingredients], memo: plan.memo || '' });
+      saveLogs();
+
+      if (consumeIds.length) {
+        fridgeItems = fridgeItems.filter(i => !consumeIds.includes(i.id));
+        saveFridge();
+        if (!document.getElementById('view-fridge').classList.contains('hidden')) renderFridgeList();
+      }
+
+      mealPlans = mealPlans.filter(p => p.id !== id);
+      saveMealPlans();
+      delete executeState[id];
+
+      renderCalendar();
+      renderDayDetailPlans();
+      renderDayDetail();
+      showToast(`'${plan.name}' 요리를 집밥로그에 기록했어요! 🍚`);
+    }
+
+    function renderDayDetailPlans() {
+      const container = document.getElementById('day-detail-plans');
+      const plans = mealPlans.filter(p => p.date === selectedDate);
+      if (plans.length === 0) { container.innerHTML = ''; return; }
+
+      container.innerHTML = `<div class="text-[11px] font-bold text-sky-500">📝 계획된 요리 (${plans.length})</div>` + plans.map(p => {
+        const matchedIngredients = p.ingredients.map(ing => {
+          const match = fridgeItems.find(f => f.name === ing);
+          return { name: ing, fridgeId: match ? match.id : null };
+        });
+        const hasFridgeMatch = matchedIngredients.some(m => m.fridgeId);
+        return `
+        <div class="bg-sky-50/60 border border-sky-100 rounded-xl p-3 space-y-1.5">
+          <div class="flex items-start justify-between">
+            <div class="font-bold text-sm text-gray-800">${escapeHtml(p.name)}</div>
+            <button onclick="deleteMealPlan('${p.id}')" class="text-gray-300 hover:text-red-500 text-xs px-1">✕</button>
+          </div>
+          ${p.ingredients.length ? `<div class="flex flex-wrap gap-1">${p.ingredients.map(t => `<span class="text-[10px] bg-white text-sky-600 border border-sky-200 px-1.5 py-0.5 rounded-full">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+          ${p.link ? `<a href="${escapeAttr(p.link)}" target="_blank" rel="noopener noreferrer" class="inline-block text-[11px] font-bold text-sky-600 underline">🔗 레시피 보기</a>` : ''}
+          ${p.memo ? `<p class="text-xs text-gray-500 bg-white/70 p-2 rounded-lg">${escapeHtml(p.memo)}</p>` : ''}
+          <button onclick="toggleExecutePanel('${p.id}')" class="text-xs font-bold text-white bg-sky-500 hover:bg-sky-600 px-3 py-1.5 rounded-full transition">🍳 요리 완료로 기록하기</button>
+          <div id="execute-panel-${p.id}" class="hidden space-y-2 bg-white rounded-xl p-2.5 border border-sky-200 mt-1">
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] text-gray-500 shrink-0">완료 날짜</span>
+              <input type="date" id="execute-date-${p.id}" value="${p.date}" class="text-xs px-2 py-1 border border-gray-200 rounded-lg flex-1">
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] text-gray-500 shrink-0">별점</span>
+              <div class="flex items-center gap-0.5" id="execute-star-input-${p.id}"></div>
+            </div>
+            ${hasFridgeMatch ? `
+            <div>
+              <span class="text-[11px] text-gray-500">냉장고에서 뺄 재료</span>
+              <div class="flex flex-wrap gap-2 mt-1">
+                ${matchedIngredients.map((m, idx) => m.fridgeId ? `
+                  <label class="flex items-center gap-1 text-[11px] bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
+                    <input type="checkbox" id="execute-consume-${p.id}-${idx}" data-fridge-id="${m.fridgeId}" checked class="accent-emerald-500">
+                    ${escapeHtml(m.name)}
+                  </label>` : '').join('')}
+              </div>
+            </div>` : ''}
+            <button onclick="confirmExecutePlan('${p.id}')" class="w-full text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 py-2 rounded-xl transition active:scale-95">✅ 집밥로그에 완료 기록 저장</button>
+          </div>
+        </div>`;
+      }).join('');
+
+      plans.forEach(p => { if (executeState[p.id]) renderExecuteStars(p.id); });
     }
 
     function renderDayDetail() {
