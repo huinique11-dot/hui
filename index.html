@@ -57,11 +57,17 @@
 
       <section class="bg-white rounded-3xl p-5 shadow-sm border-2 border-emerald-200 pop-in">
         <h2 class="font-title text-lg text-emerald-700 mb-2 flex items-center gap-1.5"><span>📷</span> 영수증으로 한번에 담기</h2>
-        <p class="text-xs text-gray-500 mb-3">영수증 사진을 찍거나 선택하면 품목을 자동으로 인식해드려요.</p>
-        <label class="block w-full text-center bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-2xl shadow-md cursor-pointer transition active:scale-95">
-          📸 영수증 사진 선택 / 촬영
-          <input type="file" accept="image/*" capture="environment" id="receipt-input" class="hidden" onchange="handleReceiptFile(event)">
-        </label>
+        <p class="text-xs text-gray-500 mb-3">영수증 사진을 찍거나 앨범에서 선택하면 식품 품목만 자동으로 인식해드려요.</p>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="block text-center bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-2xl shadow-md cursor-pointer transition active:scale-95">
+            📸 촬영하기
+            <input type="file" accept="image/*" capture="environment" id="receipt-input-camera" class="hidden" onchange="handleReceiptFile(event)">
+          </label>
+          <label class="block text-center bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold py-3 rounded-2xl shadow-sm cursor-pointer transition active:scale-95">
+            🖼️ 앨범에서 선택
+            <input type="file" accept="image/*" id="receipt-input-gallery" class="hidden" onchange="handleReceiptFile(event)">
+          </label>
+        </div>
         <div id="ocr-progress" class="hidden mt-3">
           <div class="w-full bg-emerald-100 h-2.5 rounded-full overflow-hidden">
             <div id="ocr-progress-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-300" style="width:0%"></div>
@@ -253,39 +259,53 @@
       }
     }
 
-    // Heuristic parser: receipts are noisy OCR text, so we strip trailing
-    // prices/quantities and drop lines that are clearly not item names.
+    // Heuristic parser: on a Korean receipt, purchased-item lines end with a
+    // price ("품목명 ... 1,000원"); store name/address/phone/summary lines don't.
+    // We only keep lines that look like an item+price row, then strip the price
+    // back off — this filters out everything except the actual purchased items.
     function parseReceiptText(rawText) {
-      const excludeKeywords = ['합계', '부가세', '과세', '면세', '받을금액', '거스름', '카드', '현금', '승인',
-        '가맹점', '사업자', '대표', '전화', 'TEL', '영수증', '포인트', '할인', '매장', '주소', '품명', '수량',
-        '금액', '바코드', '고객', '거래', '일시', '번호', 'NO.', '결제', '잔액', '적립', '방문', '감사'];
+      const excludeKeywords = ['합계', '소계', '부가세', '과세', '면세', '받을금액', '거스름', '거스름돈', '카드',
+        '현금', '승인', '가맹점', '사업자', '대표', '전화', 'TEL', 'FAX', '영수증', '포인트', '적립', '할인',
+        '매장', '주소', '품명', '수량', '단가', '금액', '바코드', '고객', '거래', '일시', '번호', 'NO.', '결제',
+        '잔액', '방문', '감사', '환영', '판매자', '통신판매', '교환', '환불', '영업시간', 'WWW', 'HTTP'];
+
+      const addressPattern = /(특별시|광역시|[가-힣]{1,4}(시|군|구|동|읍|면|로|길))\s*\d/;
+      const phonePattern = /\d{2,4}[-.\s]\d{3,4}[-.\s]\d{4}/;
+      const priceAtEnd = /(\d{1,3}(,\d{3})+|\d{2,7})\s*원?\s*$/;
+      // common non-food household items that show up on the same mart receipts
+      const nonFoodKeywords = ['휴지', '물티슈', '비닐봉투', '봉투', '세제', '섬유유연제', '수세미', '칫솔', '치약',
+        '샴푸', '린스', '바디워시', '마스크', '건전지', '쓰레기봉투', '종이컵', '호일', '랩', '장갑', '기저귀',
+        '생리대', '면봉', '수건', '락스', '세정제', '방향제', '전구', '고무장갑'];
 
       const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
       const candidates = [];
       const seen = new Set();
 
-      for (let line of lines) {
+      lines.forEach((line, idx) => {
+        if (idx === 0) return; // first line is almost always the store name
         const upper = line.toUpperCase();
-        if (excludeKeywords.some(k => upper.includes(k.toUpperCase()))) continue;
+        if (excludeKeywords.some(k => upper.includes(k))) return;
+        if (addressPattern.test(line)) return;
+        if (phonePattern.test(line)) return;
+        if (!priceAtEnd.test(line)) return; // only keep "품목명 ... 가격" style rows
 
-        // strip trailing price/quantity numbers e.g. "우유 1,000원", "계란 2 3000"
         let cleaned = line
-          .replace(/[\d,]{2,}\s*원?\s*$/g, '')
+          .replace(priceAtEnd, '')
+          .replace(/(\d{1,3}(,\d{3})+|\d{2,7})\s*원?\s*$/, '') // strip a second stray price/qty
+          .replace(/[x×*]\s*\d+\s*$/i, '')
           .replace(/^\s*\d+\s*[.)]\s*/, '')
-          .replace(/\s{2,}\d+\s*$/, '')
           .replace(/[*#=~\-_]{2,}/g, '')
           .trim();
 
-        // drop leftover pure numbers/symbols or too-short fragments
-        if (!/[가-힣a-zA-Z]/.test(cleaned)) continue;
-        if (cleaned.length < 2 || cleaned.length > 20) continue;
+        if (!/[가-힣a-zA-Z]/.test(cleaned)) return;
+        if (cleaned.length < 2 || cleaned.length > 20) return;
+        if (nonFoodKeywords.some(k => cleaned.includes(k))) return;
 
         const key = cleaned.replace(/\s/g, '');
-        if (seen.has(key)) continue;
+        if (seen.has(key) || candidates.length >= 25) return;
         seen.add(key);
         candidates.push(cleaned);
-        if (candidates.length >= 25) break;
-      }
+      });
       return candidates;
     }
 
