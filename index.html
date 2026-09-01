@@ -760,7 +760,7 @@
           <div class="p-2.5 rounded-xl border ${item.checked ? 'bg-emerald-50 border-emerald-300' : 'bg-gray-50/60 border-gray-100'} transition space-y-1.5">
             <div class="flex items-center gap-2">
               <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleItemCheck('${item.id}')" class="w-4.5 h-4.5 accent-emerald-500 cursor-pointer shrink-0">
-              <span class="flex-1 min-w-0 text-sm font-medium truncate">${escapeHtml(item.name)}</span>
+              <input type="text" value="${escapeHtml(item.name)}" onchange="updateItemField('${item.id}','name',this.value)" class="flex-1 min-w-0 text-sm font-medium bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-emerald-400 focus:outline-none px-0 py-0.5">
               <span class="text-[10px] font-bold px-2 py-1 rounded-lg shrink-0 ${d.cls}">${d.label}</span>
               <button onclick="deleteFridgeItem('${item.id}')" class="text-gray-300 hover:text-red-500 text-sm px-1 shrink-0">✕</button>
             </div>
@@ -801,7 +801,11 @@
 
     function updateItemField(id, field, value) {
       const item = fridgeItems.find(i => i.id === id);
-      if (item) { item[field] = value; saveFridge(); renderFridgeList(); }
+      if (!item) return;
+      if (field === 'name' && !value.trim()) { renderFridgeList(); return; } // ignore blanking out the name
+      item[field] = field === 'name' ? value.trim() : value;
+      saveFridge();
+      renderFridgeList();
     }
 
     function deleteFridgeItem(id) {
